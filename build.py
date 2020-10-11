@@ -5,6 +5,9 @@ import os
 import shutil
 
 
+build_dir = "build/armeabi-v7a"
+
+
 def get_cmake_path():
     root_path = os.environ["ANDROID_HOME"] + "/cmake/"
     cmake_version = [
@@ -27,8 +30,11 @@ def run_command(cmd):
     return os.system(cmd)
 
 
+def run_adb(cmd):
+    run_command("{}/platform-tools/adb {}".format(os.environ["ANDROID_HOME"], cmd))
+
+
 def build():
-    build_dir = "build/armeabi-v7a"
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
     os.makedirs(build_dir)
@@ -42,10 +48,24 @@ def build():
     if ret != 0:
         raise RuntimeError("cmake error")
     ret = run_command("make")
+    if ret != 0:
+        raise RuntimeError("make error")
+    os.chdir("../../")
+
+
+def install():
+    run_adb("push {}/{} /data/local/tmp/{}".format(build_dir,
+        "libbase_lib.so", "libbase_lib.so"))
+    run_adb("push {}/{} /data/local/tmp/{}".format(build_dir,
+        "libdep_lib.so", "libdep_lib.so"))
+    run_adb("push {}/{} /data/local/tmp/{}".format(build_dir,
+        "main", "main"))
+    run_adb("shell chmod +x /data/local/tmp/main")
 
 
 def main():
     build()
+    install()
 
 
 if __name__ == "__main__":
